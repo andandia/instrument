@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('key')) {
             const { note, octave } = e.target.dataset;
             playNote(note, parseInt(octave));
-        }
+        } 
     });
 
     piano.addEventListener('touchstart', e => {
