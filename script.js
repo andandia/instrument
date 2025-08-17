@@ -8,34 +8,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const keys = [
         { note: 'C', type: 'white' }, { note: 'C#', type: 'black' }, { note: 'D', type: 'white' }, { note: 'D#', type: 'black' }, { note: 'E', type: 'white' },
-        { note: 'F', type: 'white' }, { note: 'F#', type: 'black' }, { note: 'G', type: 'white' }, { note: 'G#', type: 'black' }, { note: 'A', type: 'white' }, { note: 'A#', type: 'black' }, { note: 'B', type: 'white' }
+        { note: 'F', type: 'white' }, { note: 'F#', type: 'black' }, { note: 'G', type: 'white' }, { note: 'G#', type: 'black' }, { note: 'A', type: 'white' }, { note: 'A#', type: 'black' }, { note: 'B': 'white' }
     ];
 
-    let player;
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    let synthesizer;
+    let audioContext;
 
     async function init() {
         try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            synthesizer = new JSSynth.Synthesizer();
+            await synthesizer.init(audioContext.sampleRate);
+
             const response = await fetch('resource/piano.sf2');
             const sf2 = await response.arrayBuffer();
-            player = new Sf2Player(audioContext);
-            await player.load(sf2);
+            await synthesizer.loadSFont(sf2);
+
             loading.style.display = 'none';
         } catch (error) {
             loading.textContent = 'Error loading sounds.';
-            console.error('Error loading SoundFont:', error);
+            console.error('Error initializing synthesizer:', error);
         }
-    }
-
-    function playNote(note, octave) {
-        if (!player) return;
-        const midiNote = noteToMidi(note, octave);
-        player.play(midiNote);
     }
 
     function noteToMidi(note, octave) {
         const noteIndex = keys.findIndex(k => k.note === note);
         return 12 + (octave * 12) + noteIndex;
+    }
+
+    function noteOn(note, octave) {
+        if (!synthesizer) return;
+        const midiNote = noteToMidi(note, octave);
+        synthesizer.noteOn(0, midiNote, 127);
+    }
+
+    function noteOff(note, octave) {
+        if (!synthesizer) return;
+        const midiNote = noteToMidi(note, octave);
+        synthesizer.noteOff(0, midiNote);
     }
 
     function createKey(keyInfo, octave) {
@@ -73,20 +83,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let activeNotes = {}; // To track active notes for touch events
+
     piano.addEventListener('mousedown', e => {
         if (e.target.classList.contains('key')) {
             const { note, octave } = e.target.dataset;
-            playNote(note, parseInt(octave));
-        } 
+            noteOn(note, parseInt(octave));
+        }
+    });
+
+    piano.addEventListener('mouseup', e => {
+        if (e.target.classList.contains('key')) {
+            const { note, octave } = e.target.dataset;
+            noteOff(note, parseInt(octave));
+        }
+    });
+
+    piano.addEventListener('mouseleave', e => {
+        // Stop any active note when mouse leaves the piano area
+        // This is a simple approach. A more robust solution would track the specific key.
+        synthesizer.allNotesOff(0);
     });
 
     piano.addEventListener('touchstart', e => {
-        if (e.target.classList.contains('key')) {
-            e.preventDefault();
-            const { note, octave } = e.target.dataset;
-            playNote(note, parseInt(octave));
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.classList.contains('key')) {
+                const { note, octave } = target.dataset;
+                noteOn(note, parseInt(octave));
+                activeNotes[touch.identifier] = { note, octave: parseInt(octave) };
+            }
         }
     }, { passive: false });
+
+    piano.addEventListener('touchend', e => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            if (activeNotes[touch.identifier]) {
+                const { note, octave } = activeNotes[touch.identifier];
+                noteOff(note, octave);
+                delete activeNotes[touch.identifier];
+            }
+        }
+    });
+
+    piano.addEventListener('touchcancel', e => {
+        // Same as touchend
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            if (activeNotes[touch.identifier]) {
+                const { note, octave } = activeNotes[touch.identifier];
+                noteOff(note, octave);
+                delete activeNotes[touch.identifier];
+            }
+        }
+    });
 
     drawPiano();
     init();
