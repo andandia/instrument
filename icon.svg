@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+    <defs>
+        <style>
+            .bg { fill: #333; }
+            .white-key { fill: #fff; stroke: #000; stroke-width: 2px; }
+            .black-key { fill: #000; }
+        </style>
+    </defs>
+    <rect class="bg" width="192" height="192" rx="32"/>
+    <g transform="translate(32, 32) scale(0.65)">
+        <rect x="20" y="20" width="152" height="152" class="white-key" rx="10"/>
+        <rect x="45" y="20" width="25" height="90" class="black-key" rx="5"/>
+        <rect x="95" y="20" width="25" height="90" class="black-key" rx="5"/>
+    </g>
+</svg>
