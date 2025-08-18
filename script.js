@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
             synthesizer = new JSSynth.Synthesizer();
             await synthesizer.init(audioContext.sampleRate);
 
+            const node = synthesizer.createAudioNode(audioContext, 8192);
+            node.connect(audioContext.destination);
+
             const response = await fetch('resource/piano.sf2');
             const sf2 = await response.arrayBuffer();
             await synthesizer.loadSFont(sf2);
@@ -49,13 +52,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function noteOn(note, octave) {
         if (!synthesizer) return;
         const midiNote = noteToMidi(note, octave);
-        synthesizer.noteOn(0, midiNote, 127);
+        synthesizer.processMidiMessage([0x90, midiNote, 127]);
     }
 
     function noteOff(note, octave) {
         if (!synthesizer) return;
         const midiNote = noteToMidi(note, octave);
-        synthesizer.noteOff(0, midiNote);
+        synthesizer.processMidiMessage([0x80, midiNote, 0]);
     }
 
     function createKey(keyInfo, octave) {
@@ -112,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     piano.addEventListener('mouseleave', e => {
         // Stop any active note when mouse leaves the piano area
         // This is a simple approach. A more robust solution would track the specific key.
-        synthesizer.allNotesOff(0);
+        synthesizer.processMidiMessage([0xB0, 123, 0]);
     });
 
     piano.addEventListener('touchstart', e => {
