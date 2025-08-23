@@ -157,5 +157,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     drawPiano();
-    init();
+    JSSynth.waitForReady().then(init);
 });
